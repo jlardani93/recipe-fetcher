@@ -15,7 +15,7 @@ import Ingredient from '../../db/schemas/Ingredient';
  * @param {*} res 
  */
 export const ingredientSuggestions = ({ query: { input } }, res) => {
-  getSuggestionSearchPromise(input)
+  SuggestionSearch.findOne({ label: label }).exec()
     .then( doc => {
       if (doc) {
         res.json(doc.suggestions)
@@ -31,14 +31,10 @@ export const ingredientSuggestions = ({ query: { input } }, res) => {
     })
 }
 
-// @resolvesWith: [SuggestionSearch]
-function getSuggestionSearchPromise(label) {
-  return SuggestionSearch.findOne({ label: label }).exec()
-}
-
 // @resolvesWith: { suggestions: [String], docs: [FoodSearch] }
 function getFoodSuggestionsPromise(suggestions) {
-  return FoodSearch.find({ label: { $in: suggestions } }).exec().then( res => ({ suggestions, docs: res }))
+  return FoodSearch.find({ label: { $in: suggestions } }).exec()
+    .then( res => ({ suggestions, docs: res }))
 }
 
 function getRealFoodSuggestions({ suggestions, docs }) {
@@ -58,15 +54,12 @@ function getRealFoodSuggestions({ suggestions, docs }) {
           return suggestion
         })
     }
-  })).then(filterNotNull)
-}
-
-function filterNotNull(collection) {
-  return collection.filter( item => item !== null )
+  })).then(suggestions => suggestions.filter(s => s !== null))
 }
 
 function resetDatabase(){
-  SuggestionSearch.deleteMany({}, () => {console.log("deleting many")})
-  FoodSearch.deleteMany({}, () => {console.log("deleting Many")})
-  Ingredient.deleteMany({}, () => {console.log("deleting Many")})
+  const log = (modelName) => () => { console.log('Deleting many:', modelName) }
+  SuggestionSearch.deleteMany({}, () => log('SuggestionSearch'))
+  FoodSearch.deleteMany({}, log('FoodSearch'))
+  Ingredient.deleteMany({}, log('Ingredient'))
 }
