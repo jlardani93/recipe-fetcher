@@ -3,6 +3,8 @@ import FoodSearch from '../../db/schemas/FoodSearch'
 import { getIngredientSuggestions, getFood } from '../../api';
 import mongoose from 'mongoose'
 import Ingredient from '../../db/schemas/Ingredient';
+import Recipe from '../../db/schemas/Recipe';
+import RecipesSearch from '../../db/schemas/RecipesSearch';
 
 /**
  * Returns a list of suggested ingredient names beginning with the inputted string. If a query has already been made
@@ -14,17 +16,17 @@ import Ingredient from '../../db/schemas/Ingredient';
  * @param {*} req 
  * @param {*} res 
  */
-export const ingredientSuggestions = ({ query: { input } }, res) => {
-  SuggestionSearch.findOne({ label: label }).exec()
+export const ingredientSuggestions = ({ query: { input: label } }, res) => {
+  SuggestionSearch.findOne({ label }).exec()
     .then( doc => {
       if (doc) {
         res.json(doc.suggestions)
       } else {
-        getIngredientSuggestions(input)
+        getIngredientSuggestions(label)
           .then(getFoodSuggestionsPromise)
           .then(getRealFoodSuggestions)
           .then( suggestions => {
-            SuggestionSearch.create({ label: input, suggestions })
+            SuggestionSearch.create({ label, suggestions })
             res.json(suggestions) 
           })
       }
@@ -62,4 +64,6 @@ function resetDatabase(){
   SuggestionSearch.deleteMany({}, () => log('SuggestionSearch'))
   FoodSearch.deleteMany({}, log('FoodSearch'))
   Ingredient.deleteMany({}, log('Ingredient'))
+  Recipe.deleteMany({}, log('Recipe'))
+  RecipesSearch.deleteMany({}, log('RecipesSearch'))
 }
