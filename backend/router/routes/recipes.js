@@ -25,28 +25,28 @@ function newRecipesSearch(label) {
     .then(({ hits: maybeNewRecipes }) => {
       const recipeUris = maybeNewRecipes.map(({ recipe }) => recipe.uri)
       return Recipe.find({ foodId: { $in: recipeUris } }).exec()
-        .then( cachedRecipes => {
-          return getRecipeIdsForNewRecipeSearch(cachedRecipes, maybeNewRecipes)
-            .then( recipeIds => { 
-              RecipesSearch.create({ label, recipes: recipeIds })
-              return maybeNewRecipes
-            }) 
-        })
+        .then(getRecipeIdsForNewRecipeSearch(maybeNewRecipes))
+        .then( recipeIds => { 
+          RecipesSearch.create({ label, recipes: recipeIds })
+          return maybeNewRecipes
+        }) 
     })
 }
 
-function getRecipeIdsForNewRecipeSearch(cachedRecipes, maybeNewRecipes) {
-  const cachedRecipeUris = cachedRecipes.map(r => r.foodId)
-  return Promise.all(
-    maybeNewRecipes.map(({ recipe: { uri, label, image, url, ingredients: ingredientInfo } }) => {
-      if (!cachedRecipeUris.includes(uri)) {
-        return Recipe.create({ foodId: uri, label, image, url, ingredientInfo })
-          .then(recipe => recipe._id)
-        //parse ingredients from ingredient strings 
-      } else {
-        return Recipe.find({recipeId: uri}).exec()
-          .then(recipe => recipe._id)
-      }
-    })
-  )
+function getRecipeIdsForNewRecipeSearch(maybeNewRecipes) {
+  return function(cachedRecipes) {
+    const cachedRecipeUris = cachedRecipes.map(r => r.foodId)
+    return Promise.all(
+      maybeNewRecipes.map(({ recipe: { uri, label, image, url, ingredients: ingredientInfo } }) => {
+        if (!cachedRecipeUris.includes(uri)) {
+          return Recipe.create({ foodId: uri, label, image, url, ingredientInfo })
+            .then(recipe => recipe._id)
+          //parse ingredients from ingredient strings 
+        } else {
+          return Recipe.find({recipeId: uri}).exec()
+            .then(recipe => recipe._id)
+        }
+      })
+    )
+  }
 }

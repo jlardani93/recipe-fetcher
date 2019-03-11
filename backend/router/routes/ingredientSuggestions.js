@@ -6,6 +6,8 @@ import Ingredient from '../../db/schemas/Ingredient';
 import Recipe from '../../db/schemas/Recipe';
 import RecipesSearch from '../../db/schemas/RecipesSearch';
 
+//TODO Ensure that before database save, the database checks to see if ingredient, recipes, or foods already exist
+
 /**
  * Returns a list of suggested ingredient names beginning with the inputted string. If a query has already been made
  * with this same string, it will return a cached list of suggestions. If this is a query that has not been made before
@@ -17,6 +19,7 @@ import RecipesSearch from '../../db/schemas/RecipesSearch';
  * @param {*} res 
  */
 export const ingredientSuggestions = ({ query: { input: label } }, res) => {
+  resetDatabase()
   SuggestionSearch.findOne({ label }).exec()
     .then( doc => {
       if (doc) {
@@ -33,7 +36,7 @@ export const ingredientSuggestions = ({ query: { input: label } }, res) => {
     })
 }
 
-// @resolvesWith: { suggestions: [String], docs: [FoodSearch] }
+// @returns: Promise<{ suggestions: [String], docs: [FoodSearch] }>
 function getFoodSuggestionsPromise(suggestions) {
   return FoodSearch.find({ label: { $in: suggestions } }).exec()
     .then( res => ({ suggestions, docs: res }))
@@ -51,19 +54,11 @@ function getRealFoodSuggestions({ suggestions, docs }) {
           const foodId = res.parsed[0] ? res.parsed[0].food.foodId: null
           FoodSearch.create({ label: suggestion, foodId })
           if (foodId) { 
-            Ingredient.create({ label: suggestion, foodId })
+            //Figure out how to make _id the foodId
+            Ingredient.create({ _id: foodId, label: suggestion })
           }
           return suggestion
         })
     }
   })).then(suggestions => suggestions.filter(s => s !== null))
-}
-
-function resetDatabase(){
-  const log = (modelName) => () => { console.log('Deleting many:', modelName) }
-  SuggestionSearch.deleteMany({}, () => log('SuggestionSearch'))
-  FoodSearch.deleteMany({}, log('FoodSearch'))
-  Ingredient.deleteMany({}, log('Ingredient'))
-  Recipe.deleteMany({}, log('Recipe'))
-  RecipesSearch.deleteMany({}, log('RecipesSearch'))
 }
