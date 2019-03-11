@@ -11,35 +11,42 @@ import Recipe from "../../db/schemas/Recipe";
  */
 export const recipes = ({ query: { ingredient: label } }, res) => {
   RecipesSearch.findOne({ label }).populate('recipes').exec()
+  .then( doc => {
+    doc
+    ? res.json(doc.recipes)
+    : newRecipesSearch(label).then( recipes => res.json(recipes))
+  })
+}
+
+function newRecipesSearch(label) {
   //todo, update the index of the starting recipe to be asked for. This way we can cache more recipes
   //per ingredient
-    .then( doc => {
-      if (doc) {
-        res.json(doc.recipes)
+  return getRecipes(label)
+    .then(({ hits: maybeNewRecipes }) => {
+      const recipeUris = maybeNewRecipes.map(({ recipe }) => recipe.uri)
+      return Recipe.find({ foodId: { $in: recipeUris } }).exec()
+        .then( cachedRecipes => {
+          return getRecipeIdsForNewRecipeSearch(cachedRecipes, maybeNewRecipes)
+            .then( recipeIds => { 
+              RecipesSearch.create({ label, recipes: recipeIds })
+              return maybeNewRecipes
+            }) 
+        })
+    })
+}
+
+function getRecipeIdsForNewRecipeSearch(cachedRecipes, maybeNewRecipes) {
+  const cachedRecipeUris = cachedRecipes.map(r => r.foodId)
+  return Promise.all(
+    maybeNewRecipes.map(({ recipe: { uri, label, image, url, ingredients: ingredientInfo } }) => {
+      if (!cachedRecipeUris.includes(uri)) {
+        return Recipe.create({ foodId: uri, label, image, url, ingredientInfo })
+          .then(recipe => recipe._id)
+        //parse ingredients from ingredient strings 
       } else {
-        getRecipes(label)
-          .then(({ hits }) => {
-            const recipeUris = hits.map(({ recipe }) => recipe.uri)
-            return Recipe.find({ foodId: { $in: recipeUris } }).exec()
-              .then( cachedRecipes => {
-                const cachedRecipeUris = cachedRecipes.map(r => r.foodId)
-                return Promise.all(
-                  hits.map(({ recipe: { uri, label, image, url, ingredients: ingredientInfo } }) => {
-                    if (!cachedRecipeUris.includes(uri)) {
-                      return Recipe.create({ foodId: uri, label, image, url, ingredientInfo })
-                        .then(recipe => recipe._id)
-                      //parse ingredients from ingredient strings 
-                    } else {
-                      return Recipe.find({recipeId: uri}).exec()
-                        .then(recipe => recipe._id)
-                    }
-                  })
-                ).then( recipeIds => { 
-                  RecipesSearch.create({ label, recipes: recipeIds })
-                  res.json(hits)
-                })
-              })
-          })
+        return Recipe.find({recipeId: uri}).exec()
+          .then(recipe => recipe._id)
       }
     })
+  )
 }
