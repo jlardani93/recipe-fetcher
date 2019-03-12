@@ -1,10 +1,5 @@
 import SuggestionSearch from '../../db/schemas/SuggestionSearch'
-import FoodSearch from '../../db/schemas/FoodSearch'
-import { getIngredientSuggestions, getFood } from '../../api';
-import mongoose from 'mongoose'
-import Ingredient from '../../db/schemas/Ingredient';
-import Recipe from '../../db/schemas/Recipe';
-import RecipesSearch from '../../db/schemas/RecipesSearch';
+import { getIngredientSuggestions } from '../../api';
 
 //TODO Ensure that before database save, the database checks to see if ingredient, recipes, or foods already exist
 

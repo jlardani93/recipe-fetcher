@@ -15,7 +15,6 @@ FoodSearchSchema.pre("save", () => {
 })
 
 /**
- * 
  * @param {*} queries
  * @returns Promise<{ queries: [String], docs: { [query]: FoodSearch } }>
  */
