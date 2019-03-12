@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const Schema = mongoose.Schema
 
 const IngredientsSchema = new Schema({
-  id: String,
+  _id: String,
   label: String,
   recipes: [{ type: mongoose.Schema.ObjectId, ref: 'Recipe'}],
 }, { timestamps: true });

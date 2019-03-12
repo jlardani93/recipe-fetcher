@@ -9,25 +9,25 @@ import Recipe from "../../db/schemas/Recipe";
  * @param {*} req 
  * @param {*} res 
  */
-export const recipes = ({ query: { ingredient: label } }, res) => {
-  RecipesSearch.findOne({ label }).populate('recipes').exec()
+export const recipes = ({ query: { ingredient: query } }, res) => {
+  RecipesSearch.findOne({ query }).populate('recipes').exec()
   .then( doc => {
     doc
     ? res.json(doc.recipes)
-    : newRecipesSearch(label).then( recipes => res.json(recipes))
+    : newRecipesSearch(query).then( recipes => res.json(recipes))
   })
 }
 
-function newRecipesSearch(label) {
+function newRecipesSearch(query) {
   //todo, update the index of the starting recipe to be asked for. This way we can cache more recipes
   //per ingredient
-  return getRecipes(label)
+  return getRecipes(query)
     .then(({ hits: maybeNewRecipes }) => {
       const recipeUris = maybeNewRecipes.map(({ recipe }) => recipe.uri)
       return Recipe.find({ foodId: { $in: recipeUris } }).exec()
         .then(getRecipeIdsForNewRecipeSearch(maybeNewRecipes))
         .then( recipeIds => { 
-          RecipesSearch.create({ label, recipes: recipeIds })
+          RecipesSearch.create({ query, recipes: recipeIds })
           return maybeNewRecipes
         }) 
     })

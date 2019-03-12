@@ -18,47 +18,11 @@ import RecipesSearch from '../../db/schemas/RecipesSearch';
  * @param {*} req 
  * @param {*} res 
  */
-export const ingredientSuggestions = ({ query: { input: label } }, res) => {
-  resetDatabase()
-  SuggestionSearch.findOne({ label }).exec()
+export const ingredientSuggestions = ({ query: { input: query } }, res) => {
+  SuggestionSearch.findOne({ query }).exec()
     .then( doc => {
-      if (doc) {
-        res.json(doc.suggestions)
-      } else {
-        getIngredientSuggestions(label)
-          .then(getFoodSuggestionsPromise)
-          .then(getRealFoodSuggestions)
-          .then( suggestions => {
-            SuggestionSearch.create({ label, suggestions })
-            res.json(suggestions) 
-          })
-      }
+      doc
+        ? res.json(doc.suggestions)
+        : getIngredientSuggestions(query).then(res.json)
     })
-}
-
-// @returns: Promise<{ suggestions: [String], docs: [FoodSearch] }>
-function getFoodSuggestionsPromise(suggestions) {
-  return FoodSearch.find({ label: { $in: suggestions } }).exec()
-    .then( res => ({ suggestions, docs: res }))
-}
-
-function getRealFoodSuggestions({ suggestions, docs }) {
-  const cachedFoodSearchInputs = docs.map(d => d.label)
-  return Promise.all(suggestions.map( suggestion => {
-    if (cachedFoodSearchInputs.includes(suggestion)) {
-      const foodId = docs.filter(doc => doc.label === suggestion)[0].foodId
-      return foodId ? suggestion : null
-    } else {
-      return getFood(suggestion)
-        .then( res => {
-          const foodId = res.parsed[0] ? res.parsed[0].food.foodId: null
-          FoodSearch.create({ label: suggestion, foodId })
-          if (foodId) { 
-            //Figure out how to make _id the foodId
-            Ingredient.create({ _id: foodId, label: suggestion })
-          }
-          return suggestion
-        })
-    }
-  })).then(suggestions => suggestions.filter(s => s !== null))
 }
