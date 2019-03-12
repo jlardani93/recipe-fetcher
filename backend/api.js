@@ -34,6 +34,14 @@ function encode(string) {
 function getData(cacheModel, url, query) {
     console.log('RECIPE API URL:', url)
     return axios.get(url)
+        /**
+         * In order to avoid having to wait until data is cached to send http response, maybe do this:
+         * .then(modify)
+         * .then( res => {
+         *   cache(cacheModel, query, res.data)
+         *   return res
+         * })
+         */
         .then(res => cache(cacheModel, query, res.data))
         .then( res => res) 
         .catch( error => { console.log('Error message:', error.response.data) })
