@@ -10,9 +10,11 @@ export function populateDatabase(){
 
 export async function resetDatabase(){
   const log = (modelName) => () => { console.log('Deleting many:', modelName) }
-  await SuggestionSearch.deleteMany({}, () => log('SuggestionSearch'))
-  await FoodSearch.deleteMany({}, log('FoodSearch'))
-  await Ingredient.deleteMany({}, log('Ingredient'))
-  await Recipe.deleteMany({}, log('Recipe'))
-  await RecipesSearch.deleteMany({}, log('RecipesSearch'))
+  return Promise.all([
+    SuggestionSearch.deleteMany({}, () => log('SuggestionSearch')),
+    FoodSearch.deleteMany({}, log('FoodSearch')),
+    Ingredient.deleteMany({}, log('Ingredient')),
+    Recipe.deleteMany({}, log('Recipe')),
+    RecipesSearch.deleteMany({}, log('RecipesSearch'))
+  ])
 }
