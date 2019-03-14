@@ -3,6 +3,8 @@ import SuggestionSearch from "./schemas/SuggestionSearch";
 import { getFood } from "../api";
 import RecipesSearch from "./schemas/RecipesSearch";
 import Recipe from "./schemas/Recipe";
+import Ingredient from "./schemas/Ingredient";
+import { logError } from "../utils"
 
 export function cache(modelName, query, data) {
   console.log(`caching ${modelName}`)
@@ -15,8 +17,8 @@ export function cache(modelName, query, data) {
 
 function cacheFoodSearch(query, data) {
   const foodId = data.parsed[0] ? data.parsed[0].food.foodId: null
-  FoodSearch.create({ label: query, foodId })
-  if (foodId) Ingredient.create({ _id: foodId, label: query})
+  FoodSearch.create({ query, foodId }).catch(logError)
+  if (foodId) Ingredient.create({ _id: foodId, label: query}).catch(logError)
   return data
 }
 
@@ -24,15 +26,18 @@ function cacheSuggestionSearch(query, data) {
   return FoodSearch.getExistingQueries(data)
     .then( docs => {
       return Promise.all(data.map( query => {
-        Object.keys(docs).includes(query)
+        return Object.keys(docs).includes(query)
           ? docs[query].foodId ? query : null
-          : getFood(query).then(res => res.parsed[0] ? query : null)
+          : getFood(query).then(res => res.parsed[0] ? query : null).catch(logError)
       }))
-        .then(ingredients => {
-          SuggestionSearch.create({ query, suggestions: ingredients })
-          return suggestions.filter(s => s !== null)
+        .then(maybeIngredients => {
+          const ingredients = maybeIngredients.filter(s => s !== null)
+          SuggestionSearch.create({ query, suggestions: ingredients }).catch(logError)
+          return ingredients
         })
+        .catch(logError)
     })
+    .catch(logError)
 }
 
 function cacheRecipeSearch(query, data) {
@@ -45,7 +50,9 @@ function cacheRecipeSearch(query, data) {
           { _id, label, image, url, ingredientInfo }
         ))
       ))
+      .catch(logError)
     })
-  RecipesSearch.create({ query, recipes: recipeUris })
+    .catch(logError)
+  RecipesSearch.create({ query, recipes: recipeUris }).catch(logError)
   return data.hits
 }

@@ -1,14 +1,15 @@
 import express from 'express'
-import { ingredientSuggestions } from "./routes/ingredientSuggestions";
-import { recipes } from './routes/recipes';
 import SuggestionSearch from '../db/schemas/SuggestionSearch';
 import { getIngredientSuggestions, getRecipes } from '../api';
 import RecipesSearch from '../db/schemas/RecipesSearch';
+import { resetDatabase } from '../db/testUtils'
+import { logError } from '../utils'
 
 export const router = express.Router()
 
 router.get('/ingredientSuggestions', ingredientSuggestions)
 router.get('/recipes', recipes)
+router.get('/resetDB', resetDB)
 
 /**
  * Returns a list of suggested ingredient names beginning with the inputted string. If a query has already been made
@@ -22,11 +23,12 @@ router.get('/recipes', recipes)
  */
 function ingredientSuggestions({ query: { input: query } }, res) {
   SuggestionSearch.findOne({ query }).exec()
-    .then( doc => {
-      doc
+    .then(doc => {
+      return doc
         ? res.json(doc.suggestions)
-        : getIngredientSuggestions(query).then(res.json)
+        : getIngredientSuggestions(query).then(ingredients => { res.json(ingredients) })
     })
+    .catch(logError)
 }
 
 /**
@@ -38,9 +40,16 @@ function ingredientSuggestions({ query: { input: query } }, res) {
  */
 function recipes({ query: { ingredient: query } }, res) {
   RecipesSearch.findOne({ query }).populate('recipes').exec()
-  .then( doc => {
-    doc
+  .then(doc => {
+    return doc
     ? res.json(doc.recipes)
-    : getRecipes(query).then(res.json)
+    : getRecipes(query).then(recipes => { res.json(recipes) })  
   })
+  .catch(logError)
+}
+
+function resetDB(_, res) {
+  resetDatabase()
+    .then(() => { res.json({ message: 'DB Reset' }) })
+    .catch(logError)
 }

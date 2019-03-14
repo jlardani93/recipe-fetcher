@@ -5,7 +5,9 @@ import Recipe from "./schemas/Recipe";
 import RecipesSearch from "./schemas/RecipesSearch";
 
 export function populateDatabase(){
-  return SuggestionSearch.create({}).then(doc => console.log("It's working!", doc))
+  return SuggestionSearch.create({})
+    .then(doc => console.log("It's working!", doc))
+    .catch( error => { console.log('Error message:', error) })
 }
 
 export async function resetDatabase(){
@@ -17,4 +19,5 @@ export async function resetDatabase(){
     Recipe.deleteMany({}, log('Recipe')),
     RecipesSearch.deleteMany({}, log('RecipesSearch'))
   ])
+  .catch( error => { console.log('Error message:', error) })
 }
