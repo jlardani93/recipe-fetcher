@@ -1,15 +1,23 @@
 import express from 'express'
 import SuggestionSearch from '../db/schemas/SuggestionSearch';
+import FoodSearch from '../db/schemas/FoodSearch';
+import Ingredient from '../db/schemas/Ingredient';
+import Recipe from '../db/schemas/Recipe';
 import { getIngredientSuggestions, getRecipes } from '../api';
 import RecipesSearch from '../db/schemas/RecipesSearch';
 import { resetDatabase } from '../db/testUtils'
 import { logError } from '../utils'
+import { getHits } from '../api'
 
 export const router = express.Router()
 
 router.get('/ingredientSuggestions', ingredientSuggestions)
 router.get('/recipes', recipes)
 router.get('/resetDB', resetDB)
+router.get('/hits', hits)
+router.get('/dBCounts', dBCounts)
+router.get('/ingredients', dBIngredients)
+router.get('/mine', mine)
 
 /**
  * Returns a list of suggested ingredient names beginning with the inputted string. If a query has already been made
@@ -48,8 +56,32 @@ function recipes({ query: { ingredient: query } }, res) {
   .catch(logError)
 }
 
+function dBCounts(req, res) {
+  const models = [FoodSearch, Ingredient, Recipe, RecipesSearch, SuggestionSearch]
+  return Promise.all(models.map(m => m.countDocuments({}).then(c => c)))
+    .then(counts => counts.reduce((acc, c, i) => ({ ...acc, [models[i].collection.collectionName]: c }), {}))
+    .then(dBCounts => res.json(dBCounts))
+    .catch(logError)
+}
+
+function dBIngredients(req, res) {
+  return Ingredient.find({}).distinct('label').then( ingredients => res.json(ingredients))
+}
+
+function hits(req, res) { res.json(getHits()) }
+
 function resetDB(_, res) {
   resetDatabase()
     .then(() => { res.json({ message: 'DB Reset' }) })
     .catch(logError)
+}
+
+async function mine(req, res) {
+  const ingredients = await Ingredient.find({}).distinct('label').then( res => res)
+  const alreadySearched = await RecipesSearch.find({}).distinct('query').then( res => res)
+  const newIngredients = ingredients.filter(ing => !alreadySearched.includes(ing))
+  return Promise.all(newIngredients.map(ing => {
+    return getRecipes(ing).then(_ => true)
+  }))
+    .then(_ => res.json({message: 'Mining Complete'}))
 }

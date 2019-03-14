@@ -14,11 +14,12 @@ const QUERY_TYPES = ['recipeSearch', 'suggestionSearch', 'foodSearch']
 
 const SEARCH_LIMITS = {
     suggestionSearch: 25,
-    recipeSearch: 100,
+    recipeSearch: 5,
     foodSearch: 25,
 }
 
-const hits = QUERY_TYPES.reduce((acc, type) => ({ ...acc, [type]: 0}), {})
+const hits = QUERY_TYPES.reduce((acc, type) => ({ ...acc, [type]: 0 }), {})
+const totalHits = QUERY_TYPES.reduce((acc, type) => ({ ...acc, [type]: 0 }), {})
 const timers = QUERY_TYPES.reduce((acc, type) => ({ ...acc, [type]: null }), {})
 
 const buildRecipesUrl = ingredient => (
@@ -33,19 +34,31 @@ const buildFoodUrl = food => (
     `https://api.edamam.com/api/food-database/parser?ingr=${encode(food)}&app_id=${foodSearchId}&app_key=${foodSearchKey}`
 )
 
-export const getRecipes = ingredient => getData('recipeSearch', buildRecipesUrl(ingredient), ingredient)
+export const getRecipes = ingredient => {
+    if (checkLimit('recipeSearch')) {
+        return getData('recipeSearch', buildRecipesUrl(ingredient), ingredient)
+    } else {
+        throw Error("you've hit your query limit for recipe searches ")
+    }
+}
 
 export const getIngredientSuggestions = input => {
-    return checkLimit('suggestionSearch')
-        ?  getData('suggestionSearch', buildIngredientSuggestionsUrl(input), input)
-        :  Error("You've hit your query limit for ingredient suggestions")
+    if (checkLimit('suggestionSearch')) {
+        return getData('suggestionSearch', buildIngredientSuggestionsUrl(input), input)
+    } else {
+        throw Error("You've hit your query limit for ingredient suggestions")
+    }
 }
 
 export const getFood = food => {
-    return checkLimit('foodSearch')
-        ? getData('foodSearch', buildFoodUrl(food), food)
-        : Error("You've hit your query limit for food searches")
+    if (checkLimit('foodSearch')) {
+        return getData('foodSearch', buildFoodUrl(food), food)
+    } else {
+        throw Error("You've hit your query limit for food searches")
+    }
 }
+
+export const getHits = () => ({ hits, totalHits })
 
 function encode(string) {
     return string.replace(' ', '%20')
@@ -69,11 +82,14 @@ function getData(cacheModel, url, query) {
 
 function checkLimit(queryType) {
     if (timers[queryType]) {
-        hits[queryType] = hits[queryType] + 1
-        console.log(queryType, hits[queryType])
-        return hits[queryType] < SEARCH_LIMITS[queryType] ? true : false
+        if (hits[queryType] < SEARCH_LIMITS[queryType]) {
+            hits[queryType] += 1
+            totalHits[queryType] += 1
+            return true
+        } else {
+            return false
+        }
     } else {
-        console.log("ADDING TIMER")
         timers[queryType] = setTimeout(() => { 
             timers[queryType] = null
             hits[queryType] = 0
@@ -81,3 +97,4 @@ function checkLimit(queryType) {
         return true
     }  
 }
+
